@@ -139,10 +139,9 @@ class OrderSerializer(serializers.ModelSerializer):
             'delivery_hours'
         )
 
-    def to_representation(self, list):
-        response = {}
-        for instance in list:
-            response["id"] = instance.order_id
+    def to_representation(self, instance):
+
+        response = {"id": instance}
         return response
 
     def validate(self, attrs):
