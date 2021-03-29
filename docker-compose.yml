@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  db:
+    restart: always
+    image: postgres
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+      - .:/code
+
+
+  web:
+    restart: always
+    image: yandex-prakt-2:latest
+    build: .
+    command: sh run.sh
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - INDOCKER=1
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=db
+      - DB_POSRT=5432
