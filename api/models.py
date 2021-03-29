@@ -61,6 +61,12 @@ class Courier(models.Model):
 
         return available_orders
 
+    def assigned_orders(self):
+        assigned_order = []
+        for orders in Order.objects.filter(delivering__courier_id__courier_id=self.courier_id, status=1):
+            assigned_order.append(orders)
+        return assigned_order
+
 
 class Order(models.Model):
     NEW = 0

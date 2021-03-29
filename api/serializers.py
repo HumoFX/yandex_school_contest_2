@@ -100,7 +100,27 @@ class CourierUpdateSerializer(serializers.ModelSerializer):
                 Region.objects.get_or_create(id=region)
         return attrs
 
-    def update(self, instance, validated_data):
+    def update(self, instance: Courier, validated_data):
+        available_order = instance.available_order()
+        assigned_orders = instance.assigned_orders()
+        for order in assigned_orders:
+            if available_order.__contains__(order):
+                available_order.remove(order)
+                assigned_orders.remove(order)
+        now = datetime.datetime.now()
+        if available_order:
+            for order in available_order:
+                Delivering.objects.create(courier_id=instance,
+                                          order_id=order,
+                                          start_time=now.strftime("%H:%M")
+                                          )
+                order.status = order.ASSIGNED
+                order.save()
+        if assigned_orders:
+            for orders in assigned_orders:
+                Delivering.objects.filter(order_id=orders, courier_id=instance).delete()
+                orders.status = orders.CANCELED
+                orders.save()
         return super(CourierUpdateSerializer, self).update(instance, validated_data)
 
 
@@ -177,7 +197,8 @@ class OrderAssignSerializer(serializers.ModelSerializer):
         available_orders = courier_instance.available_order()
         for order in Order.objects.filter(delivering__courier_id=courier_instance,
                                           delivering__delivered=False):
-            available_orders.remove(order)
+            if available_orders.__contains__(order):
+                available_orders.remove(order)
         now = datetime.datetime.now()
         if available_orders:
             for available_order in available_orders:
@@ -186,7 +207,8 @@ class OrderAssignSerializer(serializers.ModelSerializer):
                     order_id=available_order,
                     start_time=now.strftime("%H:%M")
                 )
-
+                available_order.status = available_order.ASSIGNED
+                available_order.save()
         response = []
         for order in courier_instance.available_order():
             response.append({"id": order.order_id})
@@ -224,6 +246,9 @@ class OrderCompleteSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         deliver = Delivering.objects.get(courier_id__courier_id=validated_data.get('courier_id'),
                                          order_id__order_id=validated_data.get('order_id'))
+        order = Order.objects.get(validated_data.get('order_id'))
+        order.status = order.COMPLETED
+        order.save()
         now = datetime.datetime.now()
         deliver.end_time = now.strftime("%H:%M")
         return deliver.order_id
